@@ -99,7 +99,7 @@ function fnc_parse_args()
             ;;
             --build)
                 shift
-                ARG_BUILD=("${1}")
+                read -a ARG_BUILD <<< "${1}"
                 shift
             ;;
             -nc|--no-cache)
@@ -112,15 +112,6 @@ function fnc_parse_args()
             ;;
         esac
     done
-
-for str in ${ARG_BUILD[@]}; do
-  echo $str
-done
-
-
-    if $(fnc_array_contains "api" "${ARG_BUILD[@]}"); then
-        echo "YESSS"
-    fi
 
     return
 }
@@ -213,6 +204,9 @@ function fnc_update_git()
         exit
     fi
 
+    # revert back to original dir for future instructions
+    cd $VAR_RUNNING_DIR
+
     return
 }
 
@@ -232,7 +226,7 @@ function fnc_slack()
 function fnc_build()
 {
     fnc_create_build_container
-    source ${VAR_RUNNING_DIR}/apps/${VAR_CHOSEN_APP}.sh
+    source "${VAR_RUNNING_DIR}/apps/${VAR_CHOSEN_APP}.sh"
     fnc_terminate_build_container
 }
 
@@ -255,7 +249,7 @@ function fnc_docker()
 {
     VAR_CONTAINER_TARGET=$1
     VAR_CONTAINER_DIR="${VAR_DEVOPS_DIR}/docker/containers/app"
-    source ${VAR_SCRIPT_DIR}/release-docker.sh
+    source "${VAR_SCRIPT_DIR}/release-docker.sh"
 
     return
 }
@@ -287,5 +281,3 @@ function fnc_post_slack() {
 
 # RUN
 fnc_main "$@"
-
-

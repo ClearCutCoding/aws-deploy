@@ -18,6 +18,7 @@ declare -A VAR_ECS_CLUSTERS=$(config_get aws_ecs_clusters)
 declare -A VAR_ECS_SERVICES=$(config_get aws_ecs_services)
 
 VAR_ECR_REGION=$(config_get aws_ecr_region)
+
 VAR_CONTAINER_IMAGENAME_LOCAL="${VAR_PROJECT_NAME}-${ARG_TARGET}-${VAR_CONTAINER_TARGET}"
 VAR_CONTAINER_IMAGENAME_LOCAL_BASE="${VAR_PROJECT_NAME}-${ARG_TARGET}-${VAR_CONTAINER_TARGET}-base"
 VAR_CONTAINER_IMAGENAME_REMOTE="${ARG_TARGET}-${VAR_CONTAINER_TARGET}"
@@ -136,4 +137,3 @@ function fnc_delete_untagged()
 
 # RUN
 fnc_main "$@"
-
