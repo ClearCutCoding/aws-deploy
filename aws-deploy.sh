@@ -1,0 +1,291 @@
+#!/usr/bin/env bash
+set -e
+
+config_read_file() {
+    (grep -E "^${2}=" -m 1 "${1}" 2>/dev/null || echo "VAR=__UNDEFINED__") | head -n 1 | cut -d '=' -f 2-;
+}
+
+config_get() {
+    val="$(config_read_file aws-deploy.cfg "${1}")";
+    printf -- "%s" "${val}";
+}
+
+VAR_SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+VAR_RUNNING_DIR="$(pwd)"
+
+# Declare arguments and global vars
+declare -A VAR_VALID_TARGETS=$(config_get aws_account_targets)
+
+VAR_APPS_LIST=($(config_get apps_list)) # Must match the name of repo dir inside VAR_REPO_ROOT_DIR
+VAR_SLACK_ENDPOINT=$(config_get slack_endpoint)
+VAR_PROJECT_NAME=$(config_get project)
+VAR_REPO_ROOT_DIR=$(config_get dir_repo)
+VAR_DEVOPS_DIR=$(config_get dir_devops)
+VAR_CONFIG_ROOT_DIR=$(config_get dir_config)
+
+VAR_BUILD_CONTAINER_ID=
+VAR_CHOSEN_APP=
+VAR_CONTAINER_TAG="latest"
+VAR_BUILDBASE=true
+VAR_REDEPLOY=true
+
+ARG_VERSION_TAG=
+ARG_VERSION_BRANCH=
+ARG_DEVOPS_BRANCH=master
+ARG_TARGET=
+ARG_APP=
+ARG_BUILD=
+ARG_NOCACHE=
+
+
+# TERMINAL COLORS
+COL_RED='\033[1;31m'
+COL_YELLOW='\033[1;33m'
+COL_GREEN='\033[0;32m'
+COL_BLUE='\033[0;34m'
+COL_NC='\033[0m' # No Color
+
+# Main flow
+function fnc_main()
+{
+    echo -e "\n${COL_GREEN}START RELEASE PROCESS${COL_NC}\n"
+
+    fnc_post_slack "*Deployment Script Started*"
+
+    fnc_parse_args "$@"
+    fnc_verify_args
+    fnc_choose_app
+    fnc_update_git
+    fnc_slack
+    fnc_build
+    fnc_cleanup
+
+    fnc_post_slack "*Deployment Script Ended*"
+
+    echo -e "\n${COL_GREEN}FINISH RELEASE PROCESS${COL_NC}\n"
+
+    return
+}
+
+function fnc_parse_args()
+{
+    while [ $# -gt 0 ]
+    do
+        case "${1}" in
+            -v|--version)
+                shift
+                ARG_VERSION_TAG="${1}"
+                shift
+            ;;
+            -b|--branch)
+                shift
+                ARG_VERSION_BRANCH="${1}"
+                shift
+            ;;
+            -do|--devopsbranch)
+                shift
+                ARG_DEVOPS_BRANCH="${1}"
+                shift
+            ;;
+            -t|--target)
+                shift
+                ARG_TARGET="${1}"
+                shift
+            ;;
+            -a|--app)
+                shift
+                ARG_APP="${1}"
+                shift
+            ;;
+            --build)
+                shift
+                ARG_BUILD=("${1}")
+                shift
+            ;;
+            -nc|--no-cache)
+                shift
+                ARG_NOCACHE="--no-cache"
+            ;;
+            *)
+                echo -e "\n${COL_RED}ERROR: UNKNOWN ARGUMENT ${1}${COL_NC}\n"
+                exit 1
+            ;;
+        esac
+    done
+
+for str in ${ARG_BUILD[@]}; do
+  echo $str
+done
+
+
+    if $(fnc_array_contains "api" "${ARG_BUILD[@]}"); then
+        echo "YESSS"
+    fi
+
+    return
+}
+
+function fnc_verify_args()
+{
+    local VALID=1
+    local ERRORS=""
+
+    # Target must be valid
+    if ! [ -n ${ARG_TARGET} ] || ! [[ -n "${VAR_VALID_TARGETS[$ARG_TARGET]}" ]]; then
+        ERRORS=${ERRORS}"Target is invalid\n"
+        VALID=0
+    fi
+
+    # Devops branch must be provided
+    if [ -z ${ARG_DEVOPS_BRANCH} ]; then
+        ERRORS=$ERRORS"Devops branch must be provided\n"
+        VALID=0
+    fi
+
+    if [ ${VALID} -eq 0 ]; then
+        echo -e "\n${COL_RED}ERRORS:\n\n${ERRORS}${COL_NC}"
+        exit
+    fi
+
+    return
+}
+
+function fnc_choose_app()
+{
+    if ! [ -z ${ARG_APP} ]; then
+        if $(fnc_array_contains "${ARG_APP}" "${VAR_APPS_LIST[@]}"); then
+            echo -e "\n${COL_GREEN}App selected: ${ARG_APP}${COL_NC}\n"
+            VAR_CHOSEN_APP=${ARG_APP}
+        else
+            echo -e "${COL_RED}Invalid app provided${COL_NC}"
+            exit
+        fi
+    else
+        echo -e "\n${COL_YELLOW}Choose app${COL_NC}\n"
+
+        PS3=$'\n'"Which app would you like to build? "
+        select OPT in "${VAR_APPS_LIST[@]}"
+
+        do
+            if [[ -z $OPT ]]; then
+               echo -e "${COL_RED}Invalid option${COL_NC}"
+            else
+                VAR_CHOSEN_APP="${OPT}"
+                break
+            fi
+        done
+    fi
+
+
+    return
+}
+
+function fnc_update_git()
+{
+    # Update devops branch
+    echo -e "\n${COL_GREEN}DEVOPS REPO: Pulling latest changes from Git${COL_NC}\n"
+    (cd ${VAR_DEVOPS_DIR} && git fetch origin && git checkout ${ARG_DEVOPS_BRANCH} && git pull)
+
+    # Update app branch
+    cd ${VAR_REPO_ROOT_DIR}/${VAR_CHOSEN_APP}
+    git fetch origin
+    git fetch origin --tags
+
+    if ! [ -z ${ARG_VERSION_TAG} ]; then
+        # tag provided
+
+        git fetch origin
+        git fetch origin --tags
+
+        echo -e "\n${COL_GREEN}APP REPO: Checkout release tag: ${ARG_VERSION_TAG}${COL_NC}\n"
+        git checkout ${ARG_VERSION_TAG}
+    elif ! [ -z ${ARG_VERSION_BRANCH} ]; then
+        # branchname provided
+
+        git fetch origin
+        git fetch origin --tags
+
+        echo -e "\n${COL_GREEN}APP REPO: Checkout branch: ${ARG_VERSION_BRANCH}${COL_NC}\n"
+        git checkout ${ARG_VERSION_BRANCH}
+        git pull
+    else
+        echo -e "\n${COL_RED}Either a branch or tag must be provided${COL_NC}"
+        exit
+    fi
+
+    return
+}
+
+function fnc_slack()
+{
+    local GIT
+
+    if ! [ -z ${ARG_VERSION_TAG} ]; then
+        GIT="App Tag: *${ARG_VERSION_TAG}*"
+    elif ! [ -z ${ARG_VERSION_BRANCH} ]; then
+        GIT="App Branch: *${ARG_VERSION_BRANCH}*"
+    fi
+
+    fnc_post_slack "App: *${VAR_CHOSEN_APP}*, ${GIT}, Devops Branch: ${ARG_DEVOPS_BRANCH}, Target: *${ARG_TARGET}*"
+}
+
+function fnc_build()
+{
+    fnc_create_build_container
+    source ${VAR_RUNNING_DIR}/apps/${VAR_CHOSEN_APP}.sh
+    fnc_terminate_build_container
+}
+
+function fnc_create_build_container()
+{
+    VAR_BUILD_CONTAINER_ID=$(docker run -d -it -v ${VAR_REPO_ROOT_DIR}/${VAR_CHOSEN_APP}:/opt/repo ${VAR_PROJECT_NAME}-build-${VAR_CHOSEN_APP}:latest)
+}
+
+function fnc_terminate_build_container()
+{
+    docker rm -f ${VAR_BUILD_CONTAINER_ID}
+}
+
+function fnc_clean_artifacts()
+{
+    rm -rf ${VAR_ARTIFACT_TARGET_DIR}/*
+}
+
+function fnc_docker()
+{
+    VAR_CONTAINER_TARGET=$1
+    VAR_CONTAINER_DIR="${VAR_DEVOPS_DIR}/docker/containers/app"
+    source ${VAR_SCRIPT_DIR}/release-docker.sh
+
+    return
+}
+
+function fnc_cleanup()
+{
+    echo -e "\n${COL_GREEN}Cleanup: Remove dangling docker images${COL_NC}\n"
+
+    docker images -f dangling=true -q | xargs --no-run-if-empty docker rmi -f
+
+    return
+}
+
+######
+
+function fnc_array_contains() {
+  local e match="$1"
+  shift
+
+  for e; do [[ "$e" == "$match" ]] && return 0; done
+  return 1
+}
+
+function fnc_post_slack() {
+    local TEXT="$1"
+
+    curl -X POST -H "Content-type: application/json" --data "{\"text\": \"${TEXT}\"}" ${VAR_SLACK_ENDPOINT}
+}
+
+# RUN
+fnc_main "$@"
+
+
