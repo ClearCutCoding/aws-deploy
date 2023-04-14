@@ -20,6 +20,13 @@ export PATH=$HOME/.local/share/bin:$PATH
 ```
 $ awesome install ClearCutCoding/aws-deploy
 $ awesome alias aws-deploy-dev-image aws-deploy aws-deploy-dev-image.sh
+$ awesome alias aws-deploy-build-image aws-deploy aws-deploy-build-image.sh
+```
+
+4. Update scripts
+
+```
+$ awesome update aws-deploy
 ```
 
 ## Configuration
