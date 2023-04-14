@@ -46,3 +46,9 @@ $ (cd /opt/devops/aws/bin && aws-deploy --app xxx --devopsbranch master --branch
 ```
 $ (cd /opt/devops/aws/bin && aws-deploy-dev-image)
 ```
+
+### Build images
+
+```
+$ (cd /opt/devops/aws/bin && aws-deploy-build-image)
+```
