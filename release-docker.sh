@@ -92,7 +92,7 @@ function fnc_logon()
 
     echo -e "\n${COL_GREEN}Logon${COL_NC}\n"
 
-    PASS=$(aws ecr get-login-password --region eu-west-1 --profile ${VAR_PROJECT_NAME}-${ARG_TARGET})
+    PASS=$(aws ecr get-login-password --region ${VAR_ECR_REGION} --profile ${VAR_PROJECT_NAME}-${ARG_TARGET})
     docker login -u AWS -p ${PASS} https://${VAR_CONTAINER_IMAGENAME_REMOTE_PREFIX}
 
     return
