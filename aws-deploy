@@ -221,7 +221,7 @@ function fnc_slack()
         GIT="App Branch: *${ARG_VERSION_BRANCH}*"
     fi
 
-    fnc_post_slack "App: *${VAR_CHOSEN_APP}*, ${GIT}, Devops Branch: ${ARG_DEVOPS_BRANCH}, Target: *${ARG_TARGET}*"
+    fnc_post_slack "App: *${VAR_CHOSEN_APP}*, ${GIT}, Devops Branch: *${ARG_DEVOPS_BRANCH}*, Target: *${ARG_TARGET}*"
 }
 
 function fnc_build()
