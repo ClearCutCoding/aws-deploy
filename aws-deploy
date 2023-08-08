@@ -23,6 +23,8 @@ VAR_PROJECT_NAME=$(config_get project)
 VAR_REPO_ROOT_DIR=$(config_get dir_repo)
 VAR_DEVOPS_DIR=$(config_get dir_devops)
 VAR_CONFIG_ROOT_DIR=$(config_get dir_config)
+VAR_HOOK_SCRIPT_POST_GIT_UPDATE=$(config_get hook_script_post_git_update)
+VAR_HOOK_DOCKER_BUILD_VOLUMES=$(config_get hook_config_docker_build_volumes)
 
 VAR_BUILD_CONTAINER_ID=
 VAR_CHOSEN_APP=
@@ -56,10 +58,10 @@ function fnc_main()
     fnc_parse_args "$@"
     fnc_verify_args
     fnc_choose_app
-    fnc_update_git
-    fnc_slack
+    # fnc_update_git
+    # fnc_slack
     fnc_build
-    fnc_cleanup
+    # fnc_cleanup
 
     fnc_post_slack "*Deployment Script Ended*"
 
@@ -174,6 +176,7 @@ function fnc_choose_app()
 
 function fnc_update_git()
 {
+
     # Update devops branch
     echo -e "\n${COL_GREEN}DEVOPS REPO: Pulling latest changes from Git${COL_NC}\n"
     (cd ${VAR_DEVOPS_DIR} && git fetch origin && git checkout ${ARG_DEVOPS_BRANCH} && git pull)
@@ -205,8 +208,13 @@ function fnc_update_git()
         exit
     fi
 
+    # run any custom script
+    if ! [ -z "${VAR_HOOK_SCRIPT_POST_GIT_UPDATE}" ]; then
+        source "${VAR_HOOK_SCRIPT_POST_GIT_UPDATE}"
+    fi
+
     # revert back to original dir for future instructions
-    cd $VAR_RUNNING_DIR
+    cd "$VAR_RUNNING_DIR"
 
     return
 }
@@ -233,7 +241,16 @@ function fnc_build()
 
 function fnc_create_build_container()
 {
-    VAR_BUILD_CONTAINER_ID=$(docker run -d -it -v ${VAR_REPO_ROOT_DIR}/${VAR_CHOSEN_APP}:/opt/repo ${VAR_PROJECT_NAME}-build-${VAR_CHOSEN_APP}:latest)
+    VOLUME_FLAGS=""
+
+    # add any custom volumes
+    if ! [ -z "${VAR_HOOK_SCRIPT_POST_GIT_UPDATE}" ]; then
+        while IFS= read -r line; do
+            VOLUME_FLAGS="$VOLUME_FLAGS -v $line"
+        done < "${VAR_HOOK_DOCKER_BUILD_VOLUMES}"
+    fi
+
+    VAR_BUILD_CONTAINER_ID=$(docker run -d -it ${VOLUME_FLAGS} -v ${VAR_REPO_ROOT_DIR}/${VAR_CHOSEN_APP}:/opt/repo ${VAR_PROJECT_NAME}-build-${VAR_CHOSEN_APP}:latest)
 }
 
 function fnc_terminate_build_container()

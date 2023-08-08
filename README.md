@@ -32,6 +32,8 @@ $ awesome update aws-deploy
 ## Configuration
 
 - Make sure the aws repo using this script has a config file `aws-deploy.cfg` in `/opt/devops/aws/bin`
+- You can run a custom script after git repos update by mentioning the script in 'hook_script_post_git_update'
+- You can add custom volumes to the docker build image by mentioning the file in 'hook_config_docker_build_volumes'.  This file should be terminated by an empty line, with each line being a source:target volume mapping.
 
 ## Run deployment
 

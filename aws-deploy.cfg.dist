@@ -10,3 +10,5 @@ aws_account_targets=([prd]=1 [tst]=1 [dev]=1 [build]=1)
 aws_ecr_region=eu-west-1
 aws_ecs_clusters=([prd]="saas-master-EcsCluster-1" [tst]="saas-master-tst-EcsCluster-2")
 aws_ecs_services=([x]="saas-master-tst-x")
+hook_script_post_git_update=
+hook_config_docker_build_volumes=
