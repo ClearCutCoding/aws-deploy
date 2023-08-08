@@ -58,10 +58,10 @@ function fnc_main()
     fnc_parse_args "$@"
     fnc_verify_args
     fnc_choose_app
-    # fnc_update_git
-    # fnc_slack
+    fnc_update_git
+    fnc_slack
     fnc_build
-    # fnc_cleanup
+    fnc_cleanup
 
     fnc_post_slack "*Deployment Script Ended*"
 
@@ -210,6 +210,7 @@ function fnc_update_git()
 
     # run any custom script
     if ! [ -z "${VAR_HOOK_SCRIPT_POST_GIT_UPDATE}" ]; then
+        echo "RUNNING CUSTOM HOOK: hook_script_post_git_update"
         source "${VAR_HOOK_SCRIPT_POST_GIT_UPDATE}"
     fi
 
@@ -245,6 +246,8 @@ function fnc_create_build_container()
 
     # add any custom volumes
     if ! [ -z "${VAR_HOOK_SCRIPT_POST_GIT_UPDATE}" ]; then
+        echo "RUNNING CUSTOM HOOK: hook_config_docker_build_volumes"
+
         while IFS= read -r line; do
             VOLUME_FLAGS="$VOLUME_FLAGS -v $line"
         done < "${VAR_HOOK_DOCKER_BUILD_VOLUMES}"
