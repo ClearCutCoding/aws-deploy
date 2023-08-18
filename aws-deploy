@@ -25,6 +25,7 @@ VAR_DEVOPS_DIR=$(config_get dir_devops)
 VAR_CONFIG_ROOT_DIR=$(config_get dir_config)
 VAR_HOOK_SCRIPT_POST_GIT_UPDATE=$(config_get hook_script_post_git_update)
 VAR_HOOK_DOCKER_BUILD_VOLUMES=$(config_get hook_config_docker_build_volumes)
+VAR_HOOK_DOCKER_BUILD_ENV_VARS=$(config_get hook_config_docker_build_env_vars)
 
 VAR_BUILD_CONTAINER_ID=
 VAR_CHOSEN_APP=
@@ -58,7 +59,7 @@ function fnc_main()
     fnc_parse_args "$@"
     fnc_verify_args
     fnc_choose_app
-    fnc_update_git
+    # fnc_update_git
     fnc_slack
     fnc_build
     fnc_cleanup
@@ -242,18 +243,24 @@ function fnc_build()
 
 function fnc_create_build_container()
 {
-    VOLUME_FLAGS=""
+    local VOLUME_FLAGS=""
 
     # add any custom volumes
-    if ! [ -z "${VAR_HOOK_SCRIPT_POST_GIT_UPDATE}" ]; then
+    if ! [ -z "${VAR_HOOK_DOCKER_BUILD_VOLUMES}" ]; then
         echo "RUNNING CUSTOM HOOK: hook_config_docker_build_volumes"
 
         while IFS= read -r line; do
-            VOLUME_FLAGS="$VOLUME_FLAGS -v $line"
+            VOLUME_FLAGS="${VOLUME_FLAGS} -v $line"
         done < "${VAR_HOOK_DOCKER_BUILD_VOLUMES}"
     fi
 
-    VAR_BUILD_CONTAINER_ID=$(docker run -d -it ${VOLUME_FLAGS} -v ${VAR_REPO_ROOT_DIR}/${VAR_CHOSEN_APP}:/opt/repo ${VAR_PROJECT_NAME}-build-${VAR_CHOSEN_APP}:latest)
+    # add any custom env vars (if/else because spaces in VAR_HOOK_DOCKER_BUILD_ENV_VARS don't work if un a variable with double quotes then expanded)
+    if ! [ -z "${VAR_HOOK_DOCKER_BUILD_ENV_VARS}" ]; then
+        echo "RUNNING CUSTOM HOOK: hook_config_docker_build_env_vars"
+        VAR_BUILD_CONTAINER_ID=$(docker run -d -it --env-file "${VAR_HOOK_DOCKER_BUILD_ENV_VARS}" ${VOLUME_FLAGS} -v "${VAR_REPO_ROOT_DIR}/${VAR_CHOSEN_APP}:/opt/repo" ${VAR_PROJECT_NAME}-build-${VAR_CHOSEN_APP}:latest)
+    else
+        VAR_BUILD_CONTAINER_ID=$(docker run -d -it ${VOLUME_FLAGS} -v "${VAR_REPO_ROOT_DIR}/${VAR_CHOSEN_APP}:/opt/repo" ${VAR_PROJECT_NAME}-build-${VAR_CHOSEN_APP}:latest)
+    fi
 }
 
 function fnc_terminate_build_container()
