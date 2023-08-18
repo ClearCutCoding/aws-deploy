@@ -59,7 +59,7 @@ function fnc_main()
     fnc_parse_args "$@"
     fnc_verify_args
     fnc_choose_app
-    # fnc_update_git
+    fnc_update_git
     fnc_slack
     fnc_build
     fnc_cleanup
