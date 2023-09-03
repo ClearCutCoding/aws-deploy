@@ -1,38 +1,30 @@
 #!/usr/bin/env bash
 set -e
 
-config_read_file() {
-    (grep -E "^${2}=" -m 1 "${1}" 2>/dev/null || echo "VAR=__UNDEFINED__") | head -n 1 | cut -d '=' -f 2-;
-}
-
-config_get() {
-    val="$(config_read_file aws-deploy.cfg "${1}")";
-    printf -- "%s" "${val}";
-}
-
 # VAR_SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 VAR_SCRIPT_DIR="$(dirname "$(readlink -f "$0")")" # follow symlink
 VAR_RUNNING_DIR="$(pwd)"
 
-# Declare arguments and global vars
-declare -A VAR_VALID_TARGETS=$(config_get aws_account_targets)
+# Following will be filled from config file
+declare -A VAR_VALID_TARGETS=
+VAR_APPS_LIST=
+VAR_SLACK_ENDPOINT=
+VAR_PROJECT_NAME=
+VAR_REPO_ROOT_DIR=
+VAR_DEVOPS_DIR=
+VAR_CONFIG_ROOT_DIR=
+VAR_HOOK_SCRIPT_POST_GIT_UPDATE=
+VAR_HOOK_DOCKER_BUILD_VOLUMES=
+VAR_HOOK_DOCKER_BUILD_ENV_VARS=
 
-VAR_APPS_LIST=($(config_get apps_list)) # Must match the name of repo dir inside VAR_REPO_ROOT_DIR
-VAR_SLACK_ENDPOINT=$(config_get slack_endpoint)
-VAR_PROJECT_NAME=$(config_get project)
-VAR_REPO_ROOT_DIR=$(config_get dir_repo)
-VAR_DEVOPS_DIR=$(config_get dir_devops)
-VAR_CONFIG_ROOT_DIR=$(config_get dir_config)
-VAR_HOOK_SCRIPT_POST_GIT_UPDATE=$(config_get hook_script_post_git_update)
-VAR_HOOK_DOCKER_BUILD_VOLUMES=$(config_get hook_config_docker_build_volumes)
-VAR_HOOK_DOCKER_BUILD_ENV_VARS=$(config_get hook_config_docker_build_env_vars)
-
+# Declare other vars
 VAR_BUILD_CONTAINER_ID=
 VAR_CHOSEN_APP=
 VAR_CONTAINER_TAG="latest"
 VAR_BUILDBASE=true
 VAR_REDEPLOY=true
 
+# Following will be filled from script arguments
 ARG_VERSION_TAG=
 ARG_VERSION_BRANCH=
 ARG_DEVOPS_BRANCH=master
@@ -40,7 +32,7 @@ ARG_TARGET=
 ARG_APP=
 ARG_BUILD=
 ARG_NOCACHE=
-
+ARG_CONFIG_FILE=aws-deploy.cfg
 
 # TERMINAL COLORS
 COL_RED='\033[1;31m'
@@ -49,15 +41,26 @@ COL_GREEN='\033[0;32m'
 COL_BLUE='\033[0;34m'
 COL_NC='\033[0m' # No Color
 
+function config_read_file() {
+    (grep -E "^${2}=" -m 1 "${1}" 2>/dev/null || echo "VAR=__UNDEFINED__") | head -n 1 | cut -d '=' -f 2-;
+}
+
+function config_get() {
+    val="$(config_read_file ${ARG_CONFIG_FILE} "${1}")";
+    printf -- "%s" "${val}";
+}
+
 # Main flow
 function fnc_main()
 {
     echo -e "\n${COL_GREEN}START RELEASE PROCESS${COL_NC}\n"
 
+    fnc_parse_args "$@"
+    fnc_load_config
+    fnc_verify_args
+
     fnc_post_slack "*Deployment Script Started*"
 
-    fnc_parse_args "$@"
-    fnc_verify_args
     fnc_choose_app
     fnc_update_git
     fnc_slack
@@ -76,6 +79,11 @@ function fnc_parse_args()
     while [ $# -gt 0 ]
     do
         case "${1}" in
+            -c|--config)
+                shift
+                ARG_CONFIG_FILE="${1}"
+                shift
+            ;;
             -v|--version)
                 shift
                 ARG_VERSION_TAG="${1}"
@@ -143,6 +151,20 @@ function fnc_verify_args()
     fi
 
     return
+}
+
+function fnc_load_config()
+{
+    VAR_VALID_TARGETS=$(config_get aws_account_targets)
+    VAR_APPS_LIST=($(config_get apps_list)) # Must match the name of repo dir inside VAR_REPO_ROOT_DIR
+    VAR_SLACK_ENDPOINT=$(config_get slack_endpoint)
+    VAR_PROJECT_NAME=$(config_get project)
+    VAR_REPO_ROOT_DIR=$(config_get dir_repo)
+    VAR_DEVOPS_DIR=$(config_get dir_devops)
+    VAR_CONFIG_ROOT_DIR=$(config_get dir_config)
+    VAR_HOOK_SCRIPT_POST_GIT_UPDATE=$(config_get hook_script_post_git_update)
+    VAR_HOOK_DOCKER_BUILD_VOLUMES=$(config_get hook_config_docker_build_volumes)
+    VAR_HOOK_DOCKER_BUILD_ENV_VARS=$(config_get hook_config_docker_build_env_vars)
 }
 
 function fnc_choose_app()

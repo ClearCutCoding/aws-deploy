@@ -1,32 +1,25 @@
 #!/usr/bin/env bash
 set -e
 
-config_read_file() {
-    (grep -E "^${2}=" -m 1 "${1}" 2>/dev/null || echo "VAR=__UNDEFINED__") | head -n 1 | cut -d '=' -f 2-;
-}
-
-config_get() {
-    val="$(config_read_file aws-deploy.cfg "${1}")";
-    printf -- "%s" "${val}";
-}
-
 VAR_SCRIPT_DIR="$(dirname "$(readlink -f "$0")")" # follow symlink
 VAR_RUNNING_DIR="$(pwd)"
 
-# Declare arguments and global vars
-declare -A VAR_VALID_TARGETS=$(config_get aws_account_targets)
+# Following will be filled from config file
+declare -A VAR_VALID_TARGETS=
+VAR_VALID_IMAGES_LIST=
+VAR_PROJECT_NAME=
+VAR_DEVOPS_DIR=
 
-VAR_VALID_IMAGES_LIST=($(config_get dev_images_list))
-VAR_PROJECT_NAME=$(config_get project)
-VAR_DEVOPS_DIR=$(config_get dir_devops)
-
+# Declare other vars
 VAR_CONTAINER_TAG="latest"
 VAR_CONTAINER_TARGET=
+VAR_DEV_BASETARGET="prd"
 ARG_TARGET=dev
+
+# Following will be filled from script arguments
 ARG_NOCACHE=
 ARG_PULL=
-
-VAR_DEV_BASETARGET="prd"
+ARG_CONFIG_FILE=aws-deploy.cfg
 
 # TERMINAL COLORS
 COL_RED='\033[1;31m'
@@ -35,10 +28,21 @@ COL_GREEN='\033[0;32m'
 COL_BLUE='\033[0;34m'
 COL_NC='\033[0m' # No Color
 
+function config_read_file() {
+    (grep -E "^${2}=" -m 1 "${1}" 2>/dev/null || echo "VAR=__UNDEFINED__") | head -n 1 | cut -d '=' -f 2-;
+}
+
+function config_get() {
+    val="$(config_read_file ${ARG_CONFIG_FILE} "${1}")";
+    printf -- "%s" "${val}";
+}
+
 # Main flow
 function fnc_main()
 {
     fnc_parse_args "$@"
+    fnc_load_config
+
     fnc_update_git
     fnc_choose_image
     fnc_choose_tag
@@ -53,6 +57,11 @@ function fnc_parse_args()
     while [ $# -gt 0 ]
     do
         case "${1}" in
+            -c|--config)
+                shift
+                ARG_CONFIG_FILE="${1}"
+                shift
+            ;;
             --no-cache)
                 shift
                 ARG_NOCACHE="--no-cache"
@@ -69,6 +78,14 @@ function fnc_parse_args()
     done
 
     return
+}
+
+function fnc_load_config()
+{
+    VAR_VALID_TARGETS=$(config_get aws_account_targets)
+    VAR_VALID_IMAGES_LIST=($(config_get dev_images_list))
+    VAR_PROJECT_NAME=$(config_get project)
+    VAR_DEVOPS_DIR=$(config_get dir_devops)
 }
 
 function fnc_update_git()
