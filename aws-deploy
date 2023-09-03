@@ -155,7 +155,7 @@ function fnc_verify_args()
 
 function fnc_load_config()
 {
-    VAR_VALID_TARGETS=$(config_get aws_account_targets)
+    declare -g -A VAR_VALID_TARGETS=$(config_get aws_account_targets)
     VAR_APPS_LIST=($(config_get apps_list)) # Must match the name of repo dir inside VAR_REPO_ROOT_DIR
     VAR_SLACK_ENDPOINT=$(config_get slack_endpoint)
     VAR_PROJECT_NAME=$(config_get project)

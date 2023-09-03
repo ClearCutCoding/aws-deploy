@@ -82,7 +82,7 @@ function fnc_parse_args()
 
 function fnc_load_config()
 {
-    VAR_VALID_TARGETS=$(config_get aws_account_targets)
+    declare -g -A VAR_VALID_TARGETS=$(config_get aws_account_targets)
     VAR_VALID_IMAGES_LIST=($(config_get dev_images_list))
     VAR_PROJECT_NAME=$(config_get project)
     VAR_DEVOPS_DIR=$(config_get dir_devops)
