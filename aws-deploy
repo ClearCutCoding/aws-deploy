@@ -232,7 +232,7 @@ function fnc_update_git()
     fi
 
     # run any custom script
-    if ! [ -z "${VAR_HOOK_SCRIPT_POST_GIT_UPDATE}" ]; then
+    if [ ! -z "${VAR_HOOK_SCRIPT_POST_GIT_UPDATE}" ] && [ "${VAR_HOOK_SCRIPT_POST_GIT_UPDATE}" != "__UNDEFINED__" ]; then
         echo "RUNNING CUSTOM HOOK: hook_script_post_git_update"
         source "${VAR_HOOK_SCRIPT_POST_GIT_UPDATE}"
     fi
@@ -268,7 +268,7 @@ function fnc_create_build_container()
     local VOLUME_FLAGS=""
 
     # add any custom volumes
-    if ! [ -z "${VAR_HOOK_DOCKER_BUILD_VOLUMES}" ]; then
+    if [ ! -z "${VAR_HOOK_DOCKER_BUILD_VOLUMES}" ] && [ "${VAR_HOOK_DOCKER_BUILD_VOLUMES}" != "__UNDEFINED__" ]; then
         echo "RUNNING CUSTOM HOOK: hook_config_docker_build_volumes"
 
         while IFS= read -r line; do
@@ -277,7 +277,7 @@ function fnc_create_build_container()
     fi
 
     # add any custom env vars (if/else because spaces in VAR_HOOK_DOCKER_BUILD_ENV_VARS don't work if un a variable with double quotes then expanded)
-    if ! [ -z "${VAR_HOOK_DOCKER_BUILD_ENV_VARS}" ]; then
+    if [ ! -z "${VAR_HOOK_DOCKER_BUILD_ENV_VARS}" ] && [ "${VAR_HOOK_DOCKER_BUILD_ENV_VARS}" != "__UNDEFINED__" ]; then
         echo "RUNNING CUSTOM HOOK: hook_config_docker_build_env_vars"
         VAR_BUILD_CONTAINER_ID=$(docker run -d -it --env-file "${VAR_HOOK_DOCKER_BUILD_ENV_VARS}" ${VOLUME_FLAGS} -v "${VAR_REPO_ROOT_DIR}/${VAR_CHOSEN_APP}:/opt/repo" ${VAR_PROJECT_NAME}-build-${VAR_CHOSEN_APP}:latest)
     else
