@@ -21,6 +21,7 @@ export PATH=$HOME/.local/share/bin:$PATH
 $ awesome install ClearCutCoding/aws-deploy
 $ awesome alias aws-deploy-dev-image aws-deploy aws-deploy-dev-image.sh
 $ awesome alias aws-deploy-build-image aws-deploy aws-deploy-build-image.sh
+$ awesome alias aws-deploy-ci-image aws-deploy aws-deploy-ci-image.sh
 ```
 
 4. Update scripts
@@ -54,4 +55,10 @@ $ (cd /opt/devops/aws/bin && aws-deploy-dev-image)
 
 ```
 $ (cd /opt/devops/aws/bin && aws-deploy-build-image)
+```
+
+### CI images
+
+```
+$ (cd /opt/devops/aws/bin && aws-deploy-ci-image)
 ```
