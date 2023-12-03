@@ -1,6 +1,10 @@
 apps_list=app1 app2
 dev_images_list=package-proxy package-mysql
+dev_images_dockerfile_folder=app
 build_images_list=app1
+build_images_dockerfile_folder=build
+ci_images_list=app1
+ci_images_dockerfile_folder=ci
 slack_endpoint=https://hooks.slack.com/services/xxx
 project=project
 dir_repo=/opt/applications

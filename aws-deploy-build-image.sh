@@ -7,6 +7,7 @@ VAR_RUNNING_DIR="$(pwd)"
 # Following will be filled from config file
 declare -A VAR_VALID_TARGETS=
 VAR_VALID_IMAGES_LIST=
+VAR_DOCKERFILE_FOLDER=
 VAR_PROJECT_NAME=
 VAR_DEVOPS_DIR=
 
@@ -83,6 +84,7 @@ function fnc_load_config()
 {
     declare -g -A VAR_VALID_TARGETS=$(config_get aws_account_targets)
     VAR_VALID_IMAGES_LIST=($(config_get build_images_list))
+    VAR_DOCKERFILE_FOLDER=$(config_get build_images_dockerfile_folder)
     VAR_PROJECT_NAME=$(config_get project)
     VAR_DEVOPS_DIR=$(config_get dir_devops)
 }
@@ -146,7 +148,7 @@ function fnc_docker()
     VAR_BUILDBASE=false
     VAR_REDEPLOY=false
 
-    VAR_CONTAINER_DIR="${VAR_DEVOPS_DIR}/docker/containers/build"
+    VAR_CONTAINER_DIR="${VAR_DEVOPS_DIR}/docker/containers/${VAR_DOCKERFILE_FOLDER}"
 
     source "${VAR_SCRIPT_DIR}/release-docker.sh"
 
