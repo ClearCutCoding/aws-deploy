@@ -2,6 +2,7 @@
 set -e
 
 # Used args passed in from parent script
+# ARG_APP
 # ARG_TARGET
 # ARG_NOCACHE
 # VAR_DEVOPS_DIR
@@ -116,7 +117,7 @@ function fnc_redeploy()
 
     echo -e "\n${COL_GREEN}Re-deploy ECS Containers${COL_NC}\n"
 
-    local CLUSTER=${VAR_ECS_CLUSTERS[${ARG_TARGET}]}
+    local CLUSTER=${VAR_ECS_CLUSTERS[${ARG_APP}-${ARG_TARGET}]}
 
     local SERVICE_KEY=${VAR_CONTAINER_TARGET}-${ARG_TARGET}
     local SERVICE=${VAR_ECS_SERVICES[${SERVICE_KEY}]}
