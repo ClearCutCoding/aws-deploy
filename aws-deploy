@@ -225,6 +225,7 @@ function fnc_update_git()
 
         echo -e "\n${COL_GREEN}APP REPO: Checkout branch: ${ARG_VERSION_BRANCH}${COL_NC}\n"
         git checkout ${ARG_VERSION_BRANCH}
+        git reset --hard origin/${ARG_VERSION_BRANCH}
         git pull
     else
         echo -e "\n${COL_RED}Either a branch or tag must be provided${COL_NC}"
